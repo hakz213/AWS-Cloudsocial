@@ -1,0 +1,64 @@
+from fastapi import FastAPI, Form
+from fastapi.responses import HTMLResponse, RedirectResponse
+
+app = FastAPI()
+
+posts = [
+    {"user": "Leke", "content": "Welcome to CloudSocial."},
+    {"user": "AWSBot", "content": "Your infrastructure is running."}
+]
+
+@app.get("/", response_class=HTMLResponse)
+def home():
+
+    feed_html = ""
+
+    for post in reversed (posts):
+        feed_html += f"""
+        <div style="background:#1f1f1f; padding:15px; margin-bottom:12px; border-radius:10px;">
+            <h3>{post['user']}</h3>
+            <p>{post['content']}</p>
+        </div>
+        """
+
+    return f"""
+    <html>
+    <head>
+        <title>CloudSocial</title>
+    </head>
+
+    <body style="
+        font-family:Arial;
+        background:#111;
+        color:white;
+        max-width:700px;
+        margin:auto;
+        padding:20px;
+    ">
+
+        <h1>CloudSocial</h1>
+
+        <p>Social platform running on AWS + Nginx + FastAPI</p>
+
+	<form method="post" action="/post">
+	        <input method="user" placeholder="Your name" required
+			style="width:100%; padding:10px; margin-bottom:10px;">
+
+		<textarea name="content" placeholder="What's happening?" required
+			style="width:100%; padding:10px; height:90px;"></textarea>
+
+	<button type="submit" style="padding:10px 20px; margin-top:10px;">
+		Post
+	</button>
+
+
+	<hr>
+        {feed_html}
+    </body>
+    </html>
+    """
+
+@app.post("/post")
+def create_post(user: str = Form(...), content: str = Form(...)):
+	posts.append({"user": user, "content": content})
+	return RedirectResponse("/", status_code=303)

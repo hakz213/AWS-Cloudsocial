@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:16
+    container_name: cloudsocial.db
+    environment: 
+      POSTGRES_DB: cloudsocial 
+      POSTGRES_USER: clouduser
+      POSTGRES_PASSWORD: cloudpass
+    volumes: 
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+
+  app:
+     image: cloudsocial
+     container_name: cloudsocial-app
+     depends_on: 
+       - db
+     environment:
+       DB_HOST: db
+       DB_NAME: cloudsocial
+       DB_USER: clouduser
+       DB_PASSWORD: cloudpass
+       DB_PORT: 5432
+     ports:
+       - "3001:3000"
+volumes:
+  postgres_data:

@@ -1,0 +1,6 @@
+__pycache__
+*.pyc
+cloudsocial.db
+cloudsocial.db-journal
+cloudsocial.db-wal
+cloudsocial.db-shm
