@@ -3,3 +3,4 @@ uvicorn
 python-multipart
 itsdangerous
 psycopg2-binary
+boto3

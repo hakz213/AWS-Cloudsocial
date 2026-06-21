@@ -23,6 +23,8 @@ services:
        DB_USER: clouduser
        DB_PASSWORD: cloudpass
        DB_PORT: 5432
+       S3_BUCKET: cloudsocial-images
+       AWS_REGION: us-east-1
      ports:
        - "3001:3000"
 volumes:

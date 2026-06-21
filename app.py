@@ -1,9 +1,11 @@
-from fastapi import FastAPI, Form, Request 
+from fastapi import FastAPI, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 import hashlib
 import os
 import psycopg2
+import uuid
+import boto3
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key="change-this-secret-key")
@@ -18,6 +20,14 @@ def get_db_connection():
         user=os.getenv("DB_USER", "clouduser"),
         password=os.getenv("DB_PASSWORD", "cloudpass"),
          port=os.getenv("DB_PORT", "5432"),
+    )
+
+    S3_BUCKET = os.getenv("S3_BUCKET")
+    AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+
+    s3_client = boto3.client(
+        "s3",
+        region_name=AWS_REGION
     )
     
 
@@ -156,6 +166,14 @@ def home(request: Request):
 	if current_user:
 		auth_html = f"""
 		<p>Logged in as <b>{current_user}</b> | <a href="/logout">Logout</a></p>
+
+		<form method="post" action="/upload-avatar" enctype="multipart/form-data">
+			<input type="file" name="file" required>
+			<button type="submit">Upload Avatar</button>
+		</form>
+
+		<br>
+
 		<form method="post" action="/post">
 			<textarea name="content" placeholder="What's happening?" required
 				style="width:100%; padding:10px; height:90px;"></textarea>
@@ -392,6 +410,50 @@ def profile(username: str):
 		
 	""")
 
+@app.post("/upload-avatar")
+async def upload_avatar(
+	request: Request,
+	file: UploadFile = File(...)
+):
+	username = request.session.get("username")
+
+	if not username:
+		return RedirectResponse("/login", status_code=303)
+
+	file_extension = file.filename.split(".")[-1]
+
+	filename = f"{username}-{uuid.uuid4()}.{file_extension}"
+
+	s3_client.upload_fileobj(
+		file.file,
+		S3_BUCKET,
+		filename,
+		ExtraArgs={"ContentType": file.content_type}
+	)
+
+	image_url = (
+		f"https://{S3_BUCKET}.s3."
+		f"{AWS_REGION}.amazonaws.com/{filename}"
+	)
+
+	
+	conn = get_db_connection()
+	cursor = conn.cursor()
+
+	cursor.execute(
+		"""
+		UPDATE users
+		SET avatar_url = %s
+		WHERE username = %s
+		""",
+		(image_url, username)
+	)
+
+	conn.commit()
+	conn.close()
+	
+
+	return RedirectResponse("/", status_code=303)
 
 @app.post("/like/{post_id}")
 def like_post(request: Request, post_id: int):
