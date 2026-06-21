@@ -1,0 +1,19 @@
+name: Deploy Cloudsocial
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy.ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.54.209.161.134 }}
+          username: ssm-user
+          key: ${{ secrets.
