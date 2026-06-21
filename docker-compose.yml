@@ -25,6 +25,7 @@ services:
        DB_PORT: 5432
        S3_BUCKET: cloudsocial-images
        AWS_REGION: us-east-1
+       CLOUDFRONT_DOMAIN: d28yurw173mjvj.cloudfront.net
      ports:
        - "3001:3000"
 volumes:

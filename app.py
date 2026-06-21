@@ -4,8 +4,8 @@ from starlette.middleware.sessions import SessionMiddleware
 import hashlib
 import os
 import psycopg2
-import uuid
 import boto3
+import uuid
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key="change-this-secret-key")
@@ -19,16 +19,30 @@ def get_db_connection():
         database=os.getenv("DB_NAME", "cloudsocial"),
         user=os.getenv("DB_USER", "clouduser"),
         password=os.getenv("DB_PASSWORD", "cloudpass"),
-         port=os.getenv("DB_PORT", "5432"),
+        port=os.getenv("DB_PORT", "5432"),
     )
 
-    S3_BUCKET = os.getenv("S3_BUCKET")
-    AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+    s3_bucket = os.getenv("S3_BUCKET", "cloudsocial-images")
+    aws_region = os.getenv("AWS_REGION", "us-east-1")
+    cloudfront_domain = os.getenv("CLOUDFRONT_DOMAIN")
 
-    s3_client = boto3.client(
-        "s3",
-        region_name=AWS_REGION
-    )
+def create_presigned_url(s3_url):
+	if not s3_url:
+		return""
+
+	key = s3_url.split(".amazonaws.com/")[-1]
+
+	return boto3.client(
+		"s3",
+		region_name="us-east-1"
+	).generate_presigned_url(
+		"get_object",
+		Params={
+			"Bucket": "cloudsocial-images",
+			"Key": key
+		},
+		ExpiresIn=3600
+	)   
     
 
 def init_db():
@@ -161,11 +175,33 @@ def home(request: Request):
 		</div>
 		"""
 
-	conn.close()	
+	
+	avatar_html = ""
+	
 
+	if current_user:
+		cursor.execute(
+			"SELECT avatar_url FROM users WHERE username = %s",
+			(current_user,)
+		)
+
+		avatar_row = cursor.fetchone()
+
+		if avatar_row and avatar_row[0]:
+
+
+			avatar_html = f"""
+			<img src="{avatar_row[0]}"
+				style="width:60px;height:60px;border-radius:50%;object-fit:cover;">
+			"""
+	conn.close()
+
+	
 	if current_user:
 		auth_html = f"""
 		<p>Logged in as <b>{current_user}</b> | <a href="/logout">Logout</a></p>
+
+		{avatar_html}
 
 		<form method="post" action="/upload-avatar" enctype="multipart/form-data">
 			<input type="file" name="file" required>
@@ -420,20 +456,27 @@ async def upload_avatar(
 	if not username:
 		return RedirectResponse("/login", status_code=303)
 
-	file_extension = file.filename.split(".")[-1]
+	s3_bucket = "cloudsocial-images"
+	aws_region = "us-east-1"
 
+	file_extension = file.filename.split(".")[-1]
 	filename = f"{username}-{uuid.uuid4()}.{file_extension}"
+
+	s3_client = boto3.client(
+		"s3",
+		region_name=aws_region
+	)
 
 	s3_client.upload_fileobj(
 		file.file,
-		S3_BUCKET,
+		s3_bucket,
 		filename,
-		ExtraArgs={"ContentType": file.content_type}
+		ExtraArgs={"ContentType": file.content_type,}
+			
 	)
 
 	image_url = (
-		f"https://{S3_BUCKET}.s3."
-		f"{AWS_REGION}.amazonaws.com/{filename}"
+		f"https://{cloudfront_domain}/{filename}"
 	)
 
 	
