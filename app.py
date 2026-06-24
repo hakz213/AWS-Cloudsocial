@@ -458,6 +458,10 @@ async def upload_avatar(
 
 	s3_bucket = "cloudsocial-images"
 	aws_region = "us-east-1"
+	cloudfront_domain = os.getenv(
+		"CLOUDFRONT_DOMAIN",
+		"d28yurw173mjvj.cloudfront.net"
+	)
 
 	file_extension = file.filename.split(".")[-1]
 	filename = f"{username}-{uuid.uuid4()}.{file_extension}"
@@ -475,9 +479,7 @@ async def upload_avatar(
 			
 	)
 
-	image_url = (
-		f"https://{cloudfront_domain}/{filename}"
-	)
+	image_url = f"https://{cloudfront_domain}/{filename}"
 
 	
 	conn = get_db_connection()

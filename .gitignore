@@ -3,4 +3,7 @@ __pycache__
 .env
 cloudsocial.db
 cloudsocial.db-*
-
+**/.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
